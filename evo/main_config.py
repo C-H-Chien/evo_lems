@@ -46,30 +46,17 @@ class ConfigError(EvoException):
     pass
 
 
-def log_info_dict_json(
-    data: dict, colored: bool = True,
-    parameter_subset: typing.Optional[typing.Sequence[str]] = None
-) -> None:
-    if parameter_subset:
-        data = {
-            key: value
-            for key, value in data.items() if key in parameter_subset
-        }
+def log_info_dict_json(data: dict, colored: bool = True) -> None:
     data_str = json.dumps(data, indent=4, sort_keys=True)
     if colored and os.name != "nt":
-        data_str = highlight(
-            data_str, lexers.JsonLexer(),
-            formatters.Terminal256Formatter(
-                style=settings.SETTINGS.pygments_style))
+        data_str = highlight(data_str, lexers.JsonLexer(),
+                             formatters.Terminal256Formatter(style="monokai"))
     logger.info(data_str)
 
 
-def show(
-    config_path: str, colored: bool = True,
-    parameter_subset: typing.Optional[typing.Sequence[str]] = None
-) -> None:
+def show(config_path: str, colored: bool = True) -> None:
     with open(config_path) as config_file:
-        log_info_dict_json(json.load(config_file), colored, parameter_subset)
+        log_info_dict_json(json.load(config_file), colored)
 
 
 def merge_json_union(first_file: str, second_file: str,
@@ -93,7 +80,7 @@ def is_number(token: str) -> bool:
 
 
 def finalize_values(config: dict, key: str,
-                    values: typing.List[str]) -> typing.Any:
+                values: typing.List[str]) -> typing.Any:
     """
     Turns parsed values into final value(s) for the config at the given key,
     e.g. based on the previous type of that parameter or other constraints.
@@ -242,14 +229,11 @@ def main() -> None:
         "show", description="show configuration - %s" % lic,
         parents=[shared_parser])
     show_parser.add_argument(
-        "-c", "--config",
-        help="path of the config file to display (default: package settings)")
+        "config",
+        help="optional config file to display (default: package settings)",
+        nargs='?')
     show_parser.add_argument("--brief", help="show only the .json data",
                              action="store_true")
-    show_parser.add_argument("params",
-                             choices=list(DEFAULT_SETTINGS_DICT.keys()),
-                             nargs=argparse.REMAINDER,
-                             help="parameters to show")
 
     set_parser = sub_parsers.add_parser(
         "set", description=SET_HELP, parents=[shared_parser],
@@ -300,13 +284,11 @@ def main() -> None:
         if not args.brief and not args.config:
             style = Style.BRIGHT if not args.no_color else Style.NORMAL
             doc_str = "\n".join(
-                f"{style}{parameter}{Style.RESET_ALL}:\n{value_and_doc[1]}\n"
-                for parameter, value_and_doc in sorted(
-                    DEFAULT_SETTINGS_DICT_DOC.items())
-                if (not args.params or parameter in args.params))
+                "{0}{1}{2}:\n{3}\n".format(style, k, Style.RESET_ALL, v[1])
+                for k, v in sorted(DEFAULT_SETTINGS_DICT_DOC.items()))
             logger.info(doc_str)
             logger.info("{0}\n{1}\n{0}".format(SEP, config))
-        show(config, colored=not args.no_color, parameter_subset=args.params)
+        show(config, colored=not args.no_color)
         if config == settings.DEFAULT_PATH and not args.brief:
             logger.info(SEP + "\nSee text above for parameter descriptions.")
 
