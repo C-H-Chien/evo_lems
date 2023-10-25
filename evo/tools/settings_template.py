@@ -147,11 +147,6 @@ DEFAULT_SETTINGS_DICT_DOC = {
         False,
         "Show / save each figure separately instead of a collection."
     ),
-    "plot_start_end_markers": (
-        False,
-        "Mark the start and end of a trajectory with a symbol.\n"
-        "Start is marked with a circle, end with a cross."
-    ),
     "plot_texsystem": (
         "pdflatex",
         "'xelatex', 'lualatex' or 'pdflatex', see: https://matplotlib.org/users/pgf.html",
@@ -163,11 +158,6 @@ DEFAULT_SETTINGS_DICT_DOC = {
     "plot_trajectory_cmap": (
         "jet",
         "matplotlib color map used for mapping values on a trajectory.",
-    ),
-    "plot_trajectory_length_unit": (
-        "m",
-        "Length unit in which trajectories are displayed.\n"
-        "Supported units: mm, cm, m, km"
     ),
     "plot_trajectory_linestyle": (
         "-",
@@ -181,11 +171,6 @@ DEFAULT_SETTINGS_DICT_DOC = {
         True,
         "Equal axes ratio for realistic trajectory plots.\n"
         "Turning it off allows to stretch the plot without keeping the ratio."
-    ),
-    "pygments_style": (
-        "monokai",
-        "Style used for the syntax highlighting in evo_config.\n"
-        "See here for available styles: https://pygments.org/styles/"
     ),
     "ros_map_alpha_value": (
         1.0,

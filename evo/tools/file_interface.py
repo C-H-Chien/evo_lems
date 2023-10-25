@@ -44,7 +44,7 @@ from evo.tools import user, tf_id
 logger = logging.getLogger(__name__)
 
 SUPPORTED_ROS_MSGS = {
-    "geometry_msgs/msg/PointStamped", "geometry_msgs/msg/PoseStamped",
+    "geometry_msgs/msg/PoseStamped",
     "geometry_msgs/msg/PoseWithCovarianceStamped",
     "geometry_msgs/msg/TransformStamped", "nav_msgs/msg/Odometry"
 }
@@ -163,9 +163,19 @@ def read_kitti_poses_file(file_path) -> PosePath3D:
                        [r[4], r[5], r[6], r[7]],
                        [r[8], r[9], r[10], r[11]],
                        [0, 0, 0, 1]]) for r in mat]
+    #> add by [CH]
+    #rotations_transpose = [np.array([[r[0], r[4], r[8]],
+    #				      [r[1], r[5], r[9]],
+    #			              [r[2], r[6], r[10]]]) for r in mat]
+    #translations = [np.array([r[3], r[7], r[11]]) for r in mat]
+    #print(len(translations))
+    #xyz = np.array([-rotations_transpose[i].dot(translations[i]) for i in range(len(translations))])
+    #print(xyz)
+    
     # yapf: enable
     if not hasattr(file_path, 'read'):  # if not file handle
         logger.debug("Loaded {} poses from: {}".format(len(poses), file_path))
+#    return PosePath3D(poses_se3=poses, positions_xyz=xyz)
     return PosePath3D(poses_se3=poses)
 
 
@@ -237,13 +247,6 @@ def _get_xyz_quat_from_pose_or_odometry_msg(
     ]
     return xyz, quat
 
-def _get_xyz_quat_from_point_msg(
-        msg) -> typing.Tuple[typing.List[float], typing.List[float]]:
-    xyz = [msg.point.x, msg.point.y, msg.point.z]
-    # geometry_msgs/PointStamped does not have rotation, add unit quaternion.
-    quat = [1., 0., 0., 0.]
-    return xyz, quat
-
 
 def get_supported_topics(
         reader: typing.Union[Rosbag1Reader, Rosbag2Reader]) -> list:
@@ -298,12 +301,6 @@ def read_bag_trajectory(reader: typing.Union[Rosbag1Reader,
     # Choose appropriate message conversion.
     if msg_type == "geometry_msgs/msg/TransformStamped":
         get_xyz_quat = _get_xyz_quat_from_transform_stamped
-    elif msg_type == "geometry_msgs/msg/PointStamped":
-        logger.warning(
-            "geometry_msgs/PointStamped does not contain rotation, "
-            "evo will use unit quaternion. Note that rotation metrics will be "
-            "invalid and RPE will only be valid with point_distance metric.")
-        get_xyz_quat = _get_xyz_quat_from_point_msg
     else:
         get_xyz_quat = _get_xyz_quat_from_pose_or_odometry_msg
 
@@ -467,48 +464,17 @@ def load_res_file(zip_path, load_trajectories: bool = False) -> result.Result:
 
 def load_transform_json(json_path) -> np.ndarray:
     """
-    load a transformation stored in xyz + quaternion format in a .json file,
-    optionally with a "scale" field.
-    :param json_path: path to the .json file (or file handle)
-    :return: t (SE(3) or Sim(3) matrix)
+    load a transformation stored in xyz + quaternion format in a .json file
+    :param json_path: path to the .json file
+    :return: t (SE(3) matrix)
     """
-    if hasattr(json_path, "read"):
-        data = json.load(json_path)
-    else:
-        with open(json_path, 'r') as tf_file:
-            data = json.load(tf_file)
-    keys = ("x", "y", "z", "qx", "qy", "qz", "qw")
-    if not all(key in data for key in keys):
-        raise FileInterfaceException(
-            "invalid transform file - expected keys " + str(keys))
-    xyz = np.array([data["x"], data["y"], data["z"]])
-    quat = np.array([data["qw"], data["qx"], data["qy"], data["qz"]])
-    scale = 1 if "scale" not in data else data["scale"]
-    t = lie.sim3(lie.so3_from_se3(tr.quaternion_matrix(quat)), xyz, scale)
-    return t
-
-
-def load_transform(file_path) -> np.ndarray:
-    """
-    Load a SE(3) or Sim(3) transformation from either
-    - a binary .npy or a text file containing a 4x4 matrix,
-      saved with either np.save() or np.savetxt()
-    - a JSON file with keys x, y, z, qw, qx, qy, qz (+ scale)
-    :return: 4x4 transformation matrix
-    """
-    if os.path.getsize(file_path) < np.lib.format.MAGIC_LEN:
-        raise FileInterfaceException(f"Cannot determine type of {file_path}")
-
-    with open(file_path, "rb") as file_handle:
-        header = file_handle.read(np.lib.format.MAGIC_LEN)
-        if header.startswith(np.lib.format.MAGIC_PREFIX):
-            matrix = np.load(file_path)
-        elif header.strip().startswith(b"{"):
-            matrix = load_transform_json(file_path)
-        else:
-            matrix = np.loadtxt(file_path)
-
-    if not matrix.shape == (4, 4) or not lie.is_sim3(matrix):
-        raise FileInterfaceException(
-            f"{file_path} doesn't contain a valid Sim(3) or SE(3) matrix")
-    return matrix
+    with open(json_path, 'r') as tf_file:
+        data = json.load(tf_file)
+        keys = ("x", "y", "z", "qx", "qy", "qz", "qw")
+        if not all(key in data for key in keys):
+            raise FileInterfaceException(
+                "invalid transform file - expected keys " + str(keys))
+        xyz = np.array([data["x"], data["y"], data["z"]])
+        quat = np.array([data["qw"], data["qx"], data["qy"], data["qz"]])
+        t = lie.se3(lie.so3_from_se3(tr.quaternion_matrix(quat)), xyz)
+        return t

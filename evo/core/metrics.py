@@ -20,12 +20,11 @@ along with evo.  If not, see <http://www.gnu.org/licenses/>.
 """
 
 import abc
-import itertools
 import logging
 import math
 import sys
 import typing
-from enum import Enum, unique
+from enum import Enum
 
 import numpy as np
 
@@ -33,8 +32,6 @@ from evo import EvoException
 from evo.core import filters, trajectory
 from evo.core.result import Result
 from evo.core import lie_algebra as lie
-from evo.core.units import (Unit, ANGLE_UNITS, LENGTH_UNITS,
-                            METER_SCALE_FACTORS)
 
 if sys.version_info[0] >= 3 and sys.version_info[1] >= 4:
     ABC = abc.ABC
@@ -50,7 +47,6 @@ class MetricsException(EvoException):
     pass
 
 
-@unique
 class StatisticsType(Enum):
     rmse = "rmse"
     mean = "mean"
@@ -61,7 +57,6 @@ class StatisticsType(Enum):
     sse = "sse"
 
 
-@unique
 class PoseRelation(Enum):
     full_transformation = "full transformation"
     translation_part = "translation part"
@@ -70,6 +65,25 @@ class PoseRelation(Enum):
     rotation_angle_deg = "rotation angle in degrees"
     point_distance = "point distance"
     point_distance_error_ratio = "point distance error ratio"
+    
+
+
+class Unit(Enum):
+    none = "unit-less"
+    millimeters = "mm"
+    meters = "m"
+    kilometers = "km"
+    seconds = "s"
+    degrees = "deg"
+    radians = "rad"
+    frames = "frames"
+    percent = "%"  # used like a unit for display purposes
+
+
+class VelUnit(Enum):
+    meters_per_sec = "mm/s"
+    rad_per_sec = "rad/s"
+    degrees_per_sec = "deg/s"
 
 
 class Metric(ABC):
@@ -95,8 +109,9 @@ class PE(Metric):
     Abstract base class of pose error metrics.
     """
     def __init__(self):
-        self.unit: Unit = Unit.none
-        self.error: np.ndarray = np.array([])
+        self.unit = Unit.none
+        self.error = np.array([])
+        self.path_lengths = np.array([])
 
     def __str__(self) -> str:
         return "PE metric base class"
@@ -104,36 +119,6 @@ class PE(Metric):
     @abc.abstractmethod
     def process_data(self, data):
         return
-
-    def change_unit(self, new_unit: Unit) -> None:
-        if self.unit is new_unit:
-            return
-
-        if self.unit in (Unit.none, Unit.frames, Unit.percent, Unit.seconds):
-            raise MetricsException(f"{self.unit} does not support conversions")
-
-        bad_combinations = list(itertools.product(ANGLE_UNITS, LENGTH_UNITS))
-        if any(combi in bad_combinations
-               for combi in itertools.permutations((self.unit, new_unit))):
-            raise MetricsException(f"cannot convert {self.unit} to {new_unit}")
-
-        if len(self.error) == 0:
-            raise MetricsException(
-                "error array is empty - "
-                "please process data before changing the unit")
-
-        if self.unit in LENGTH_UNITS and new_unit in LENGTH_UNITS:
-            # Convert first to meters, then to the final length unit.
-            self.error *= (METER_SCALE_FACTORS[self.unit] /
-                           METER_SCALE_FACTORS[new_unit])
-        elif self.unit is Unit.radians and new_unit is Unit.degrees:
-            self.error = np.rad2deg(self.error)
-        elif self.unit is Unit.degrees and new_unit is Unit.radians:
-            self.error = np.deg2rad(self.error)
-        else:
-            raise MetricsException(
-                f"unknown unit combination {(self.unit, new_unit)}")
-        self.unit = new_unit
 
     def get_statistic(self, statistics_type: StatisticsType) -> float:
         if statistics_type == StatisticsType.rmse:
@@ -185,9 +170,14 @@ class PE(Metric):
             "label": "{} {}".format(metric_name,
                                     "({})".format(self.unit.value))
         })
-        result.add_stats(self.get_all_statistics())
+        #result.add_stats(self.get_all_statistics())
         if hasattr(self, "error"):
             result.add_np_array("error_array", self.error)
+        
+        #> [CH] add result info and its associated array
+        if hasattr(self, "path_lengths"):
+            result.add_np_array("path_lengths_array", self.path_lengths)
+            
         return result
 
 
@@ -324,8 +314,7 @@ class RPE(PE):
             # Already computed, see above.
             pass
         elif self.pose_relation == PoseRelation.translation_part:
-            self.error = np.array(
-                [np.linalg.norm(E_i[:3, 3]) for E_i in self.E])
+            self.error = [np.linalg.norm(E_i[:3, 3]) for E_i in self.E]
         elif self.pose_relation == PoseRelation.rotation_part:
             # ideal: rot(E_i) = 3x3 identity
             self.error = np.array([
@@ -340,8 +329,15 @@ class RPE(PE):
             self.error = np.array(
                 [abs(lie.so3_log_angle(E_i[:3, :3])) for E_i in self.E])
         elif self.pose_relation == PoseRelation.rotation_angle_deg:
+            for i in range(len(self.E)):
+            	identity_residual = (self.E[i][:3, :3].trace()-1)/2;
+            	if identity_residual > 1:
+            		self.E[i] = np.eye(4);
+
             self.error = np.array(
-                [abs(lie.so3_log_angle(E_i[:3, :3], True)) for E_i in self.E])
+                [abs(np.arccos((E_i[:3, :3].trace()-1)/2)) for E_i in self.E])
+            #self.error = np.array(
+            #    [abs(lie.so3_log_angle(E_i[:3, :3], True)) for E_i in self.E])
         else:
             raise MetricsException("unsupported pose_relation: ",
                                    self.pose_relation)
@@ -357,6 +353,7 @@ class APE(PE):
         self.pose_relation = pose_relation
         self.E: typing.List[np.ndarray] = []
         self.error = np.array([])
+        self.path_lengths = np.array([])
         if pose_relation in (PoseRelation.translation_part,
                              PoseRelation.point_distance):
             self.unit = Unit.meters
@@ -383,6 +380,44 @@ class APE(PE):
         .:return: the delta pose
         """
         return lie.relative_se3(x_t, x_t_star)
+    
+    #> Add by [CH]
+    def get_Path_Lengths(self, traj_est: trajectory.PosePath3D) -> np.ndarray:
+        """
+        CH TODO: Document here
+        """
+        # >> Camera center = - transpose(R) * T
+        # >> R is the first 3 columns in pose matrix, T is the last column
+        CameraCenters = np.array([ 
+            -(np.transpose(traj_est_pose[:3, :3])).dot(traj_est_pose[:3, 3]) 
+            for traj_est_pose in traj_est.poses_se3
+        ])
+        
+        CameraCenterDiff = np.zeros(len(traj_est.poses_se3))
+        
+        for i in range(1, len(traj_est.poses_se3) - 1):
+            #print("CameraCenters[")
+            #print(i)
+            #print("] = ")
+            #print(CameraCenters[i])
+            #print("\n")
+            CameraCenterDiff[i] = np.linalg.norm(CameraCenters[i] - CameraCenters[i-1]);
+            #print("CameraCenterDiff[")
+            #print(i)
+            #print("] = ")
+            #print(CameraCenterDiff[i])
+            #print("\n")
+	
+        #print(CameraCenterDiff)
+        PL_t = np.cumsum(CameraCenterDiff)
+        
+        
+        #print("Inbuilt cumsum = ")
+        #print(PL_t)
+
+        
+        return PL_t
+        
 
     def process_data(self, data: PathPair) -> None:
         """
@@ -398,6 +433,9 @@ class APE(PE):
         if traj_ref.num_poses != traj_est.num_poses:
             raise MetricsException(
                 "trajectories must have same number of poses")
+        
+        #> [CH]        
+        self.path_lengths = self.get_Path_Lengths(traj_est)
 
         if self.pose_relation in (PoseRelation.translation_part,
                                   PoseRelation.point_distance):
@@ -417,20 +455,32 @@ class APE(PE):
                                   PoseRelation.point_distance):
             # E is an array of position vectors only in this case
             self.error = np.array([np.linalg.norm(E_i) for E_i in self.E])
+            
         elif self.pose_relation == PoseRelation.rotation_part:
             self.error = np.array([
                 np.linalg.norm(lie.so3_from_se3(E_i) - np.eye(3))
                 for E_i in self.E
             ])
+            
         elif self.pose_relation == PoseRelation.full_transformation:
             self.error = np.array(
                 [np.linalg.norm(E_i - np.eye(4)) for E_i in self.E])
+                
         elif self.pose_relation == PoseRelation.rotation_angle_rad:
             self.error = np.array(
                 [abs(lie.so3_log_angle(E_i[:3, :3])) for E_i in self.E])
+                
         elif self.pose_relation == PoseRelation.rotation_angle_deg:
+            for i in range(len(self.E)):
+            	identity_residual = (self.E[i][:3, :3].trace()-1)/2;
+            	if identity_residual > 1:
+            		self.E[i] = np.eye(4);
+
             self.error = np.array(
-                [abs(lie.so3_log_angle(E_i[:3, :3], True)) for E_i in self.E])
+                [abs(np.arccos((E_i[:3, :3].trace()-1)/2)) for E_i in self.E])
+            #self.error = np.array(
+            #    [abs(lie.so3_log_angle(E_i[:3, :3], True)) for E_i in self.E])
+                
         else:
             raise MetricsException("unsupported pose_relation")
 

@@ -284,9 +284,9 @@ class PosePath3D(object):
         """
         return {
             "nr. of poses": self.num_poses,
-            "path length (m)": self.path_length,
-            "pos_start (m)": self.positions_xyz[0],
-            "pos_end (m)": self.positions_xyz[-1]
+            "path length (mm)": self.path_length,
+            "pos_start (mm)": self.positions_xyz[0],
+            "pos_end (mm)": self.positions_xyz[-1]
         }
 
     def get_statistics(self) -> dict:

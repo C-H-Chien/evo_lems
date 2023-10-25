@@ -65,10 +65,8 @@ def load_trajectories(
             bag = Rosbag1Reader(args.bag)  # type: ignore
         try:
             bag.open()
-            traj_ref = file_interface.read_bag_trajectory(
-                bag, args.ref_topic, cache_tf_tree=True)
-            traj_est = file_interface.read_bag_trajectory(
-                bag, args.est_topic, cache_tf_tree=True)
+            traj_ref = file_interface.read_bag_trajectory(bag, args.ref_topic)
+            traj_est = file_interface.read_bag_trajectory(bag, args.est_topic)
             ref_name, est_name = args.ref_topic, args.est_topic
         finally:
             bag.close()
@@ -127,7 +125,7 @@ def plot_result(args: argparse.Namespace, result: Result, traj_ref: PosePath3D,
     if (args.plot_x_dimension == "distances"
             and "distances_from_start" in result.np_arrays):
         x_array = result.np_arrays["distances_from_start"]
-        x_label = "$d$ (m)"
+        x_label = "$d$ (mm)"
     elif (args.plot_x_dimension == "seconds"
           and "seconds_from_start" in result.np_arrays):
         x_array = result.np_arrays["seconds_from_start"]
@@ -146,15 +144,12 @@ def plot_result(args: argparse.Namespace, result: Result, traj_ref: PosePath3D,
 
     # Plot the values color-mapped onto the trajectory.
     fig2 = plt.figure(figsize=SETTINGS.plot_figsize)
-    ax = plot.prepare_axis(
-        fig2, plot_mode,
-        length_unit=Unit(SETTINGS.plot_trajectory_length_unit))
+    ax = plot.prepare_axis(fig2, plot_mode)
 
     plot.traj(ax, plot_mode, traj_ref_full if traj_ref_full else traj_ref,
               style=SETTINGS.plot_reference_linestyle,
               color=SETTINGS.plot_reference_color, label='reference',
-              alpha=SETTINGS.plot_reference_alpha,
-              plot_start_end_markers=SETTINGS.plot_start_end_markers)
+              alpha=SETTINGS.plot_reference_alpha)
     plot.draw_coordinate_axes(ax, traj_ref, plot_mode,
                               SETTINGS.plot_reference_axis_marker_scale)
 
@@ -169,8 +164,7 @@ def plot_result(args: argparse.Namespace, result: Result, traj_ref: PosePath3D,
     plot.traj_colormap(ax, traj_est, result.np_arrays["error_array"],
                        plot_mode, min_map=args.plot_colormap_min,
                        max_map=args.plot_colormap_max,
-                       title=result.info["title"],
-                       plot_start_end_markers=SETTINGS.plot_start_end_markers)
+                       title=result.info["title"])
     plot.draw_coordinate_axes(ax, traj_est, plot_mode,
                               SETTINGS.plot_axis_marker_scale)
     if args.ros_map_yaml:

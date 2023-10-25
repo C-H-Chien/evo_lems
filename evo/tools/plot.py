@@ -22,62 +22,53 @@ along with evo.  If not, see <http://www.gnu.org/licenses/>.
 import copy
 import os
 import collections
-import collections.abc
 import logging
 import pickle
 import typing
-from enum import Enum, unique
+from enum import Enum
 
-import numpy as np
 import matplotlib as mpl
+from evo.tools.settings import SETTINGS
+
+mpl.use(SETTINGS.plot_backend)
 import matplotlib.cm as cm
 import matplotlib.pyplot as plt
 import mpl_toolkits.mplot3d.art3d as art3d
-import seaborn as sns
 from mpl_toolkits.mplot3d import Axes3D
 from matplotlib.backend_bases import FigureCanvasBase
 from matplotlib.collections import LineCollection
 from matplotlib.transforms import Affine2D, Bbox
 
+import numpy as np
+import seaborn as sns
+
 from evo import EvoException
 from evo.tools import user
-from evo.tools.settings import SETTINGS, SettingsContainer
 from evo.core import trajectory
-from evo.core.units import Unit, LENGTH_UNITS, METER_SCALE_FACTORS
+
+# configure matplotlib and seaborn according to package settings
+# TODO: 'color_codes=False' to work around this bug:
+# https://github.com/mwaskom/seaborn/issues/1546
+sns.set(style=SETTINGS.plot_seaborn_style, font=SETTINGS.plot_fontfamily,
+        font_scale=SETTINGS.plot_fontscale, color_codes=False,
+        palette=SETTINGS.plot_seaborn_palette)
+rc = {
+    "lines.linewidth": SETTINGS.plot_linewidth,
+    "text.usetex": SETTINGS.plot_usetex,
+    "font.family": SETTINGS.plot_fontfamily,
+    "pgf.texsystem": SETTINGS.plot_texsystem
+}
+mpl.rcParams.update(rc)
 
 logger = logging.getLogger(__name__)
 
 ListOrArray = typing.Union[typing.Sequence[float], np.ndarray]
 
 
-def apply_settings(settings: SettingsContainer = SETTINGS):
-    """
-    Configure matplotlib and seaborn according to package settings.
-    """
-    mpl.use(settings.plot_backend)
-
-    # TODO: 'color_codes=False' to work around this bug:
-    # https://github.com/mwaskom/seaborn/issues/1546
-    sns.set(style=settings.plot_seaborn_style, font=settings.plot_fontfamily,
-            font_scale=settings.plot_fontscale, color_codes=False,
-            palette=settings.plot_seaborn_palette)
-
-    mpl.rcParams.update({
-        "lines.linewidth": settings.plot_linewidth,
-        "text.usetex": settings.plot_usetex,
-        "font.family": settings.plot_fontfamily,
-        "pgf.texsystem": settings.plot_texsystem
-    })
-
-
-apply_settings(SETTINGS)
-
-
 class PlotException(EvoException):
     pass
 
 
-@unique
 class PlotMode(Enum):
     xy = "xy"
     xz = "xz"
@@ -88,7 +79,6 @@ class PlotMode(Enum):
     xyz = "xyz"
 
 
-@unique
 class Viewport(Enum):
     update = "update"
     keep_unchanged = "keep_unchanged"
@@ -264,62 +254,41 @@ def set_aspect_equal(ax: plt.Axes) -> None:
     ax.set_zlim3d([zmean - plot_radius, zmean + plot_radius])
 
 
-def _get_length_formatter(length_unit: Unit) -> typing.Callable:
-    def formatter(x, _):
-        return "{0:g}".format(x / METER_SCALE_FACTORS[length_unit])
-
-    return formatter
-
-
 def prepare_axis(fig: plt.Figure, plot_mode: PlotMode = PlotMode.xy,
-                 subplot_arg: int = 111,
-                 length_unit: Unit = Unit.meters) -> plt.Axes:
+                 subplot_arg: int = 111) -> plt.Axes:
     """
     prepares an axis according to the plot mode (for trajectory plotting)
     :param fig: matplotlib figure object
     :param plot_mode: PlotMode
     :param subplot_arg: optional if using subplots - the subplot id (e.g. '122')
-    :param length_unit: Set to another length unit than meters to scale plots.
-                        Note that trajectory data is still expected in meters.
     :return: the matplotlib axis
     """
-    if length_unit not in LENGTH_UNITS:
-        raise PlotException(f"{length_unit} is not a length unit")
-
     if plot_mode == PlotMode.xyz:
         ax = fig.add_subplot(subplot_arg, projection="3d")
     else:
         ax = fig.add_subplot(subplot_arg)
     if plot_mode in {PlotMode.xy, PlotMode.xz, PlotMode.xyz}:
-        xlabel = f"$x$ ({length_unit.value})"
+        xlabel = "$x$ (mm)"
     elif plot_mode in {PlotMode.yz, PlotMode.yx}:
-        xlabel = f"$y$ ({length_unit.value})"
+        xlabel = "$y$ (mm)"
     else:
-        xlabel = f"$z$ ({length_unit.value})"
+        xlabel = "$z$ (mm)"
     if plot_mode in {PlotMode.xy, PlotMode.zy, PlotMode.xyz}:
-        ylabel = f"$y$ ({length_unit.value})"
+        ylabel = "$y$ (mm)"
     elif plot_mode in {PlotMode.zx, PlotMode.yx}:
-        ylabel = f"$x$ ({length_unit.value})"
+        ylabel = "$x$ (mm)"
     else:
-        ylabel = f"$z$ ({length_unit.value})"
+        ylabel = "$z$ (mm)"
     ax.set_xlabel(xlabel)
     ax.set_ylabel(ylabel)
     if plot_mode == PlotMode.xyz:
-        ax.set_zlabel(f'$z$ ({length_unit.value})')
+        ax.set_zlabel('$z$ (mm)')
     if SETTINGS.plot_invert_xaxis:
         plt.gca().invert_xaxis()
     if SETTINGS.plot_invert_yaxis:
         plt.gca().invert_yaxis()
     if not SETTINGS.plot_show_axis:
         ax.set_axis_off()
-
-    if length_unit is not Unit.meters:
-        formatter = _get_length_formatter(length_unit)
-        ax.xaxis.set_major_formatter(formatter)
-        ax.yaxis.set_major_formatter(formatter)
-        if plot_mode == PlotMode.xyz:
-            ax.zaxis.set_major_formatter(formatter)
-
     return ax
 
 
@@ -347,32 +316,9 @@ def plot_mode_to_idx(
     return x_idx, y_idx, z_idx
 
 
-def add_start_end_markers(ax: plt.Axes, plot_mode: PlotMode,
-                          traj: trajectory.PosePath3D, start_symbol: str = "o",
-                          start_color: str = "black", end_symbol: str = "x",
-                          end_color: str = "black", alpha: float = 1.0,
-                          traj_name: typing.Optional[str] = None):
-    if traj.num_poses == 0:
-        return
-    start = traj.positions_xyz[0]
-    end = traj.positions_xyz[-1]
-    x_idx, y_idx, z_idx = plot_mode_to_idx(plot_mode)
-    start_coords = [start[x_idx], start[y_idx]]
-    end_coords = [end[x_idx], end[y_idx]]
-    if plot_mode == PlotMode.xyz:
-        start_coords.append(start[z_idx])
-        end_coords.append(end[z_idx])
-    start_label = f"Start of {traj_name}" if traj_name else None
-    end_label = f"End of {traj_name}" if traj_name else None
-    ax.scatter(*start_coords, marker=start_symbol, color=start_color,
-               alpha=alpha, label=start_label)
-    ax.scatter(*end_coords, marker=end_symbol, color=end_color, alpha=alpha,
-               label=end_label)
-
-
 def traj(ax: plt.Axes, plot_mode: PlotMode, traj: trajectory.PosePath3D,
          style: str = '-', color: str = 'black', label: str = "",
-         alpha: float = 1.0, plot_start_end_markers: bool = False) -> None:
+         alpha: float = 1.0) -> None:
     """
     plot a path/trajectory based on xyz coordinates into an axis
     :param ax: the matplotlib axis
@@ -382,8 +328,6 @@ def traj(ax: plt.Axes, plot_mode: PlotMode, traj: trajectory.PosePath3D,
     :param color: matplotlib color
     :param label: label (for legend)
     :param alpha: alpha value for transparency
-    :param plot_start_end_markers: Mark the start and end of a trajectory
-                                   with a symbol.
     """
     x_idx, y_idx, z_idx = plot_mode_to_idx(plot_mode)
     x = traj.positions_xyz[:, x_idx]
@@ -397,9 +341,6 @@ def traj(ax: plt.Axes, plot_mode: PlotMode, traj: trajectory.PosePath3D,
         set_aspect_equal(ax)
     if label and SETTINGS.plot_show_legend:
         ax.legend(frameon=True)
-    if plot_start_end_markers:
-        add_start_end_markers(ax, plot_mode, traj, start_color=color,
-                              end_color=color, alpha=alpha)
 
 
 def colored_line_collection(
@@ -432,8 +373,7 @@ def colored_line_collection(
 def traj_colormap(ax: plt.Axes, traj: trajectory.PosePath3D,
                   array: ListOrArray, plot_mode: PlotMode, min_map: float,
                   max_map: float, title: str = "",
-                  fig: typing.Optional[mpl.figure.Figure] = None,
-                  plot_start_end_markers: bool = False) -> None:
+                  fig: typing.Optional[mpl.figure.Figure] = None) -> None:
     """
     color map a path/trajectory in xyz coordinates according to
     an array of values
@@ -445,8 +385,6 @@ def traj_colormap(ax: plt.Axes, traj: trajectory.PosePath3D,
     :param max_map: upper bound value for color mapping
     :param title: plot title
     :param fig: plot figure. Obtained with plt.gcf() if none is specified
-    :param plot_start_end_markers: Mark the start and end of a trajectory
-                                   with a symbol.
     """
     pos = traj.positions_xyz
     norm = mpl.colors.Normalize(vmin=min_map, vmax=max_map, clip=True)
@@ -476,9 +414,6 @@ def traj_colormap(ax: plt.Axes, traj: trajectory.PosePath3D,
     if title:
         ax.legend(frameon=True)
         ax.set_title(title)
-    if plot_start_end_markers:
-        add_start_end_markers(ax, plot_mode, traj, start_color=colors[0],
-                              end_color=colors[-1])
 
 
 def draw_coordinate_axes(ax: plt.Figure, traj: trajectory.PosePath3D,
@@ -551,8 +486,7 @@ def draw_correspondence_edges(ax: plt.Axes, traj_1: trajectory.PosePath3D,
 
 def traj_xyz(axarr: np.ndarray, traj: trajectory.PosePath3D, style: str = '-',
              color: str = 'black', label: str = "", alpha: float = 1.0,
-             start_timestamp: typing.Optional[float] = None,
-             length_unit: Unit = Unit.meters) -> None:
+             start_timestamp: typing.Optional[float] = None) -> None:
     """
     plot a path/trajectory based on xyz coordinates into an axis
     :param axarr: an axis array (for x, y & z)
@@ -564,15 +498,10 @@ def traj_xyz(axarr: np.ndarray, traj: trajectory.PosePath3D, style: str = '-',
     :param alpha: alpha value for transparency
     :param start_timestamp: optional start time of the reference
                             (for x-axis alignment)
-    :param length_unit: Set to another length unit than meters to scale plots.
-                        Note that trajectory data is still expected in meters.
     """
     if len(axarr) != 3:
         raise PlotException("expected an axis array with 3 subplots - got " +
                             str(len(axarr)))
-    if length_unit not in LENGTH_UNITS:
-        raise PlotException(f"{length_unit} is not a length unit")
-
     if isinstance(traj, trajectory.PoseTrajectory3D):
         if start_timestamp:
             x = traj.timestamps - start_timestamp
@@ -582,14 +511,8 @@ def traj_xyz(axarr: np.ndarray, traj: trajectory.PosePath3D, style: str = '-',
     else:
         x = np.arange(0., len(traj.positions_xyz))
         xlabel = "index"
-    ylabels = [
-        f"$x$ ({length_unit.value})", f"$y$ ({length_unit.value})",
-        f"$z$ ({length_unit.value})"
-    ]
+    ylabels = ["$x$ (mm)", "$y$ (mm)", "$z$ (mm)"]
     for i in range(0, 3):
-        if length_unit is not Unit.meters:
-            formatter = _get_length_formatter(length_unit)
-            axarr[i].yaxis.set_major_formatter(formatter)
         axarr[i].plot(x, traj.positions_xyz[:, i], style, color=color,
                       label=label, alpha=alpha)
         axarr[i].set_ylabel(ylabels[i])
@@ -639,9 +562,7 @@ def traj_rpy(axarr: np.ndarray, traj: trajectory.PosePath3D, style: str = '-',
 def trajectories(fig: plt.Figure, trajectories: typing.Union[
         trajectory.PosePath3D, typing.Sequence[trajectory.PosePath3D],
         typing.Dict[str, trajectory.PosePath3D]], plot_mode=PlotMode.xy,
-                 title: str = "", subplot_arg: int = 111,
-                 plot_start_end_markers: bool = False,
-                 length_unit: Unit = Unit.meters) -> None:
+                 title: str = "", subplot_arg: int = 111) -> None:
     """
     high-level function for plotting multiple trajectories
     :param fig: matplotlib figure
@@ -650,18 +571,11 @@ def trajectories(fig: plt.Figure, trajectories: typing.Union[
     :param plot_mode: e.g. plot.PlotMode.xy
     :param title: optional plot title
     :param subplot_arg: optional matplotlib subplot ID if used as subplot
-    :param plot_start_end_markers: Mark the start and end of a trajectory
-                                   with a symbol.
-    :param length_unit: Set to another length unit than meters to scale plots.
-                        Note that trajectory data is still expected in meters.
     """
-    ax = prepare_axis(fig, plot_mode, subplot_arg, length_unit)
-    if title:
-        ax.set_title(title)
-
+    ax = prepare_axis(fig, plot_mode, subplot_arg)
     cmap_colors = None
     if SETTINGS.plot_multi_cmap.lower() != "none" and isinstance(
-            trajectories, collections.abc.Iterable):
+            trajectories, collections.Iterable):
         cmap = getattr(cm, SETTINGS.plot_multi_cmap)
         cmap_colors = iter(cmap(np.linspace(0, 1, len(trajectories))))
 
@@ -673,8 +587,7 @@ def trajectories(fig: plt.Figure, trajectories: typing.Union[
             color = next(cmap_colors)
         if SETTINGS.plot_usetex:
             name = name.replace("_", "\\_")
-        traj(ax, plot_mode, t, '-', color, name,
-             plot_start_end_markers=plot_start_end_markers)
+        traj(ax, plot_mode, t, '-', color, name)
 
     if isinstance(trajectories, trajectory.PosePath3D):
         draw(trajectories)
@@ -820,7 +733,7 @@ def ros_map(
         image = np.rot90(image)
         image = np.fliplr(image)
     ax_image = ax.imshow(image, origin="upper", cmap=cmap, extent=extent,
-                         zorder=-1, alpha=alpha)
+                         zorder=1, alpha=alpha)
 
     # Transform map frame to plot axis origin.
     map_to_pixel_origin = Affine2D()

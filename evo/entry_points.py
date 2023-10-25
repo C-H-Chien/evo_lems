@@ -23,7 +23,7 @@ along with evo.  If not, see <http://www.gnu.org/licenses/>.
 import argparse
 import logging
 import sys
-from importlib import import_module
+import typing
 
 import argcomplete
 from evo import EvoException, NullHandler
@@ -39,28 +39,32 @@ only do required imports in respective module when creating parser
 """
 
 
-def handle_entry_point(app_name: str) -> None:
-    parser_module = import_module(f"evo.main_{app_name}_parser")
-    parser = parser_module.parser()
-    argcomplete.autocomplete(parser)
-    main_module = import_module(f"evo.main_{app_name}")
-    launch(main_module, parser)
-
-
 def ape() -> None:
-    handle_entry_point("ape")
+    from evo import main_ape
+    parser = main_ape.parser()
+    argcomplete.autocomplete(parser)
+    launch(main_ape, parser)
 
 
 def rpe() -> None:
-    handle_entry_point("rpe")
+    from evo import main_rpe
+    parser = main_rpe.parser()
+    argcomplete.autocomplete(parser)
+    launch(main_rpe, parser)
 
 
 def res() -> None:
-    handle_entry_point("res")
+    from evo import main_res
+    parser = main_res.parser()
+    argcomplete.autocomplete(parser)
+    launch(main_res, parser)
 
 
 def traj() -> None:
-    handle_entry_point("traj")
+    from evo import main_traj
+    parser = main_traj.parser()
+    argcomplete.autocomplete(parser)
+    launch(main_traj, parser)
 
 
 def merge_config(args: argparse.Namespace) -> argparse.Namespace:
