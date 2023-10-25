@@ -1,10 +1,16 @@
+# evo LEMS research @ Brown University
+This is a forked repo from [evo](https://github.com/MichaelGrupp/evo). <br />
+Edited in needs of evaluating visual odometry algorithms in the MIS environment. <br />
+
+# Change Logs
+[Jun. 26th, 2023] Enable input flags `align_origin` and `correct_scale` effective at the same time. <br />
+[Jul. 5th, 2023]  Add normalized by the number of frames. <br />
+[Jul. 28th, 2023] Add normalized by the path length. <br />
+
+------------------------------------------------------------------------------
 # evo 
 
 ***Python package for the evaluation of odometry and SLAM***
-
-| Linux / macOS / Windows / ROS / ROS2 |
-| :---: |
-| [![Build Status](https://dev.azure.com/michl2222/michl2222/_apis/build/status/MichaelGrupp.evo?branchName=master)](https://dev.azure.com/michl2222/michl2222/_build/latest?definitionId=1&branchName=master) |
 
 This package provides executables and a small library for handling, evaluating and comparing the trajectory output of odometry and SLAM algorithms.
 
@@ -13,7 +19,7 @@ Supported trajectory formats:
 * 'TUM' trajectory files
 * 'KITTI' pose files
 * 'EuRoC MAV' (.csv groundtruth and TUM trajectory file)
-* ROS and ROS2 bagfile with `geometry_msgs/PoseStamped`, `geometry_msgs/TransformStamped`, `geometry_msgs/PoseWithCovarianceStamped`, `geometry_msgs/PointStamped` or `nav_msgs/Odometry` topics or [TF messages](https://github.com/MichaelGrupp/evo/wiki/Formats#bag---ros-bagfile)
+* ROS and ROS2 bagfile with `geometry_msgs/PoseStamped`, `geometry_msgs/TransformStamped`, `geometry_msgs/PoseWithCovarianceStamped` or `nav_msgs/Odometry` topics or [TF messages](https://github.com/MichaelGrupp/evo/wiki/Formats#bag---ros-bagfile)
 
 See [here](https://github.com/MichaelGrupp/evo/wiki/Formats) for more infos about the formats.
 
@@ -80,7 +86,7 @@ PyQt5 will give you the enhanced GUI for plot figures from the "*Qt5Agg*" matplo
 
 **ROS (optional)**
 
-Some ROS-related features require a ROS installation, see [here](http://www.ros.org/). We are testing this package with ROS Noetic and Iron. Previous versions (`<= 1.12.0`) work with Melodic, Kinetic and Indigo.
+Some ROS-related features require a ROS installation, see [here](http://www.ros.org/). We are testing this package with ROS Noetic and Galactic. Previous versions (`<= 1.12.0`) work with Melodic, Kinetic and Indigo.
 
 ---
 
