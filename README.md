@@ -1,11 +1,33 @@
 # evo LEMS research @ Brown University
 This is a forked repo from [evo](https://github.com/MichaelGrupp/evo). <br />
-Edited in needs of evaluating visual odometry algorithms in the MIS environment. <br />
+Edited initially in needs of evaluating visual odometry algorithms in the MIS environment for the internal LEMS lab research. It is however applicable to any evaluation needs for VO/SLAM pipelines. The entire evaluation tool has been tested in Ubuntu systems. <br />
+
+# Quick and Simple Installation
+Simply follow the official evo instruction, _i.e._, <br />
+```bash
+pip install evo --upgrade --no-binary evo
+```
+Note that you might be able to use `pip2` or `pip3` to specify your Python version.
+
+# Common Evaluation Metrics
+* Absolute Trajectory Error (ATE)
+* Relative Trajectory Error (RPE)
+	- Evaluating translation part using the TUM data format, with ``--delta 1`` which evalutes RPE translation part on consecutive frames (number of frames apart for RPE is 1).
+```bash
+evo_rpe tum groundtruth.txt estimated_poses.txt -r trans_part --delta 1
+```
+	- Evaluating rotation part using the TUM data format. The unit can be either angle ``angle_deg`` or radian ``angle_rad``.
+```bash
+evo_rpe tum groundtruth.txt estimated_poses.txt -r angle_deg --delta 1
+```
 
 # Change Logs
 [Jun. 26th, 2023] Enable input flags `align_origin` and `correct_scale` effective at the same time. <br />
 [Jul. 5th, 2023]  Add normalized by the number of frames. <br />
 [Jul. 28th, 2023] Add normalized by the path length. <br />
+<br />
+More updates are coming soon.
+
 
 ------------------------------------------------------------------------------
 # evo 
