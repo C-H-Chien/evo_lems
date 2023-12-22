@@ -12,14 +12,14 @@ Note that you might be able to use `pip2` or `pip3` to specify your Python versi
 # Common Evaluation Metrics
 * Absolute Trajectory Error (ATE)
 * Relative Trajectory Error (RPE)
-	- Evaluating translation part using the TUM data format, with ``--delta 1`` which evalutes RPE translation part on consecutive frames (number of frames apart for RPE is 1).
 ```bash
-evo_rpe tum groundtruth.txt estimated_poses.txt -r trans_part --delta 1
+evo_rpe tum groundtruth.txt estimated_poses.txt -r <target_metric> --delta <n>
 ```
-	- Evaluating rotation part using the TUM data format. The unit can be either angle ``angle_deg`` or radian ``angle_rad``.
-```bash
-evo_rpe tum groundtruth.txt estimated_poses.txt -r angle_deg --delta 1
-```
+	- ``<target_metric>`` can be either ``full`` (both translation and rotation parts), ``trans_part`` (only translation, user-defined unit), ``rot_part`` (only rotation part, unitless), ``angle_deg`` (only rotation part in degree), and ``angle_rad`` (only rotation part in radian).
+	- ``<n>`` is a positive integer indicating the number of frames apart for evaluating RPE, _i.e._, ``--delta 1`` evaluates RPE on consecutive frames.
+
+
+
 
 # Change Logs
 [Jun. 26th, 2023] Enable input flags `align_origin` and `correct_scale` effective at the same time. <br />
