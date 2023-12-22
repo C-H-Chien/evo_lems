@@ -10,16 +10,29 @@ pip install evo --upgrade --no-binary evo
 Note that you might be able to use `pip2` or `pip3` to specify your Python version.
 
 # Common Evaluation Metrics
-* Absolute Trajectory Error (ATE)
 * Relative Trajectory Error (RPE)
 ```bash
-evo_rpe tum groundtruth.txt estimated_poses.txt -r <target_metric> --delta <n>
+evo_rpe <data_format> <groundtruth_file_name>.txt <estimated_poses_file_name>.txt -r <target_metric> --delta <n>
 ```
+Input arguments:
+	- ``<data_format>`` can be either ``kitti``, ``tum``, or ``euroc``, depending on how the camera poses are structured in the files.
+	- ``<groundtruth_file_name>`` is the file name of ground-truths you wish to compare the estimated pose with.
+	- ``<estimated_poses_file_name>`` is the file name of estimations you wish to compare with the ground-truths.
 	- ``<target_metric>`` can be either ``full`` (both translation and rotation parts), ``trans_part`` (only translation, user-defined unit), ``rot_part`` (only rotation part, unitless), ``angle_deg`` (only rotation part in degree), and ``angle_rad`` (only rotation part in radian).
-	- ``<n>`` is a positive integer indicating the number of frames apart for evaluating RPE, _i.e._, ``--delta 1`` evaluates RPE on consecutive frames.
+	- ``<n>`` is a positive integer indicating the number of frames apart for evaluating RPE, _i.e._, ``--delta 1`` evaluates RPE on consecutive frames. <br />
+	
+* Absolute Trajectory Error (ATE)
+Different from the original EVO repository, we allow _(i)_ trajectory alignment at the origin in order to observe the extent of cumulative errors from difference algorithms, and _(ii)_ normalize the result by the trajectory path length in order to compare results across different sequences with different path lengths.
+```bash
+evo_ape <data_format> <groundtruth_file_name>.txt <estimated_poses_file_name>.txt --<alignment_method> --correct_scale --normalize_by_path_length -r <target_metric>
+```
+Input arguments:
+	- ``<data_format>``, ``<groundtruth_file_name>``, ``<estimated_poses_file_name>``, and ``<target_metric>`` are the same as RPE.
+	- ``<alignment_method>`` is the method for aligning the estimated trajectory to the ground-truth trajectory, including _(i)_ ``align_origin`` which aligns two trajectories by fixing the first frame to the same coordinate, _(ii)_ ``align`` which aligns two trajectory using Horn's method. 
 
 
-
+# Visualizing the trajectory
+Coming soon.
 
 # Change Logs
 [Jun. 26th, 2023] Enable input flags `align_origin` and `correct_scale` effective at the same time. <br />
