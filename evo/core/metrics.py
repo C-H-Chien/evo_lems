@@ -384,14 +384,21 @@ class APE(PE):
     #> Add by [CH]
     def get_Path_Lengths(self, traj_est: trajectory.PosePath3D) -> np.ndarray:
         """
-        CH TODO: Document here
+        Computes the trajectory path length from the first frame up to 
+        each frame of the estimated trajectory. This is used to compare method
+        performances from sequences to sequences, or datasets to datasets, as 
+        each sequence has different path length.
+        :param traj_est: estimated trajectory in se3
+        .: return: the path length associated to each frame
         """
-        # >> Camera center = - transpose(R) * T
-        # >> R is the first 3 columns in pose matrix, T is the last column
-        CameraCenters = np.array([ 
-            -(np.transpose(traj_est_pose[:3, :3])).dot(traj_est_pose[:3, 3]) 
-            for traj_est_pose in traj_est.poses_se3
-        ])
+        #> Camera center = - transpose(R) * T
+        #> R is the first 3 columns in pose matrix, T is the last column
+        #> 2024.03.31: for TUM data format, [tx, ty, tz] is the camera center
+        CameraCenters = np.array([ traj_est_pose[:3, 3] for traj_est_pose in traj_est.poses_se3 ])
+        # CameraCenters = np.array([ 
+        #     -(np.transpose(traj_est_pose[:3, :3])).dot(traj_est_pose[:3, 3]) 
+        #     for traj_est_pose in traj_est.poses_se3
+        # ])
         
         CameraCenterDiff = np.zeros(len(traj_est.poses_se3))
         
