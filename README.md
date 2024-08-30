@@ -8,6 +8,7 @@ Simply follow the official evo instruction, _i.e._, <br />
 pip install evo --upgrade --no-binary evo
 ```
 Note that you might be able to use `pip2` or `pip3` to specify your Python version.
+Also make sure to use the root authority so that the commands are installed in the system.
 
 # Common Evaluation Metrics
 * **Relative Trajectory Error (RPE)**
@@ -34,12 +35,17 @@ Input arguments: <br />
 
 
 # Visualizing the trajectory
-Coming soon.
+Visualizing multiple trajectories can be achieved via
+```bash
+evo_traj <data_form> --ref ./<ground-truth file>.txt ./<trajectory file1>.txt ./<trajectory file2>.txt -p --plot_mode xyz
+```
+where you can add as many ``<trajectory file>.txt`` as possible. Typically, I would suggest aligning the trajectories to the origin by adding ``--align_origin`` flag so that it reflects the camera motion drift. Also, if the scale is inconsistent between the ground-truth and the estimated trajectory, add ``--correct_scale`` flag to resolve it.
 
 # Change Logs
 [Jun. 26th, 2023] Enable input flags `align_origin` and `correct_scale` effective at the same time. <br />
 [Jul. 5th, 2023]  Add normalized by the number of frames. <br />
 [Jul. 28th, 2023] Add normalized by the path length. <br />
+[Aug. 30th, 2024] Improve the quality of visualizing trajectories. <br />
 <br />
 More updates are coming soon.
 

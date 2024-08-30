@@ -95,7 +95,7 @@ DEFAULT_SETTINGS_DICT_DOC = {
         "Invert the y-axis of plots."
     ),
     "plot_linewidth": (
-        1.5,
+        2.0,
         "Line width value supported by matplotlib."
     ),
     "plot_mode_default": (
@@ -108,7 +108,7 @@ DEFAULT_SETTINGS_DICT_DOC = {
         + "'none' will use the default color palette, see plot_seaborn_palette."
     ),
     "plot_reference_alpha": (
-        0.5,
+        1.0,
         "Alpha value of the reference trajectories in plots."
     ),
     "plot_reference_color": (
@@ -131,7 +131,7 @@ DEFAULT_SETTINGS_DICT_DOC = {
         "See: https://seaborn.pydata.org/generated/seaborn.color_palette.html"
     ),
     "plot_seaborn_style": (
-        "darkgrid",
+        "white",
         "Defines the plot background/grid.\n"
         + "Options: 'whitegrid', 'darkgrid', 'white' or 'dark'."
     ),
@@ -152,7 +152,7 @@ DEFAULT_SETTINGS_DICT_DOC = {
         "'xelatex', 'lualatex' or 'pdflatex', see: https://matplotlib.org/users/pgf.html",
     ),
     "plot_trajectory_alpha": (
-        0.75,
+        1.0,
         "Alpha value of non-reference trajectories in plots.",
     ),
     "plot_trajectory_cmap": (

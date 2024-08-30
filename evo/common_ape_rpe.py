@@ -121,7 +121,7 @@ def plot_result(args: argparse.Namespace, result: Result, traj_ref: PosePath3D,
     plot_mode = plot.PlotMode(args.plot_mode)
 
     # Plot the raw metric values.
-    fig1 = plt.figure(figsize=SETTINGS.plot_figsize)
+    fig1 = plt.figure(figsize=SETTINGS.plot_figsize, facecolor="w")
     if (args.plot_x_dimension == "distances"
             and "distances_from_start" in result.np_arrays):
         x_array = result.np_arrays["distances_from_start"]
@@ -143,8 +143,16 @@ def plot_result(args: argparse.Namespace, result: Result, traj_ref: PosePath3D,
         xlabel=x_label)
 
     # Plot the values color-mapped onto the trajectory.
-    fig2 = plt.figure(figsize=SETTINGS.plot_figsize)
+    fig2 = plt.figure(figsize=SETTINGS.plot_figsize, facecolor="w")
+    print("setting facecolor?")
+    fig2.set_facecolor("w")
     ax = plot.prepare_axis(fig2, plot_mode)
+    # ax.xaxis.set_pane_color((1.0, 1.0, 1.0, 0.0))
+    # ax.yaxis.set_pane_color((1.0, 1.0, 1.0, 0.0))
+    # ax.zaxis.set_pane_color((1.0, 1.0, 1.0, 0.0))
+    # ax.xaxis._axinfo["grid"]['color'] =  (1,1,1,0)
+    # ax.yaxis._axinfo["grid"]['color'] =  (1,1,1,0)
+    # ax.zaxis._axinfo["grid"]['color'] =  (1,1,1,0)
 
     plot.traj(ax, plot_mode, traj_ref_full if traj_ref_full else traj_ref,
               style=SETTINGS.plot_reference_linestyle,
@@ -161,10 +169,11 @@ def plot_result(args: argparse.Namespace, result: Result, traj_ref: PosePath3D,
         args.plot_colormap_max = np.percentile(
             result.np_arrays["error_array"], args.plot_colormap_max_percentile)
 
-    plot.traj_colormap(ax, traj_est, result.np_arrays["error_array"],
-                       plot_mode, min_map=args.plot_colormap_min,
-                       max_map=args.plot_colormap_max,
-                       title=result.info["title"])
+    #> draw color bar showing the levels of errors
+    # plot.traj_colormap(ax, traj_est, result.np_arrays["error_array"],
+    #                   plot_mode, min_map=args.plot_colormap_min,
+    #                   max_map=args.plot_colormap_max,
+    #                   title=result.info["title"])
     plot.draw_coordinate_axes(ax, traj_est, plot_mode,
                               SETTINGS.plot_axis_marker_scale)
     if args.ros_map_yaml:

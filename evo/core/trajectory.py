@@ -236,6 +236,9 @@ class PosePath3D(object):
         traj_origin = self.poses_se3[0]
         traj_ref_origin = traj_ref.poses_se3[0]
         to_ref_origin = np.dot(traj_ref_origin, lie.se3_inverse(traj_origin))
+        print(traj_origin)
+        print(traj_ref_origin)
+        print(to_ref_origin)
         logger.debug(
             "Origin alignment transformation:\n{}".format(to_ref_origin))
         self.transform(to_ref_origin)

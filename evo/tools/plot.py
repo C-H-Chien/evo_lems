@@ -268,21 +268,21 @@ def prepare_axis(fig: plt.Figure, plot_mode: PlotMode = PlotMode.xy,
     else:
         ax = fig.add_subplot(subplot_arg)
     if plot_mode in {PlotMode.xy, PlotMode.xz, PlotMode.xyz}:
-        xlabel = "$x$ (mm)"
+        xlabel = "$x$ (m)"
     elif plot_mode in {PlotMode.yz, PlotMode.yx}:
-        xlabel = "$y$ (mm)"
+        xlabel = "$y$ (m)"
     else:
-        xlabel = "$z$ (mm)"
+        xlabel = "$z$ (m)"
     if plot_mode in {PlotMode.xy, PlotMode.zy, PlotMode.xyz}:
-        ylabel = "$y$ (mm)"
+        ylabel = "$y$ (m)"
     elif plot_mode in {PlotMode.zx, PlotMode.yx}:
-        ylabel = "$x$ (mm)"
+        ylabel = "$x$ (m)"
     else:
-        ylabel = "$z$ (mm)"
+        ylabel = "$z$ (m)"
     ax.set_xlabel(xlabel)
     ax.set_ylabel(ylabel)
     if plot_mode == PlotMode.xyz:
-        ax.set_zlabel('$z$ (mm)')
+        ax.set_zlabel('$z$ (m)')
     if SETTINGS.plot_invert_xaxis:
         plt.gca().invert_xaxis()
     if SETTINGS.plot_invert_yaxis:
@@ -318,7 +318,7 @@ def plot_mode_to_idx(
 
 def traj(ax: plt.Axes, plot_mode: PlotMode, traj: trajectory.PosePath3D,
          style: str = '-', color: str = 'black', label: str = "",
-         alpha: float = 1.0) -> None:
+         alpha: float = 1.0, is_ref: bool = False) -> None:
     """
     plot a path/trajectory based on xyz coordinates into an axis
     :param ax: the matplotlib axis
@@ -332,15 +332,25 @@ def traj(ax: plt.Axes, plot_mode: PlotMode, traj: trajectory.PosePath3D,
     x_idx, y_idx, z_idx = plot_mode_to_idx(plot_mode)
     x = traj.positions_xyz[:, x_idx]
     y = traj.positions_xyz[:, y_idx]
+    x_0 = traj.positions_xyz[0, 0]
+    y_0 = traj.positions_xyz[0, 1]
+    z_0 = traj.positions_xyz[0, 2]
     if plot_mode == PlotMode.xyz:
         z = traj.positions_xyz[:, z_idx]
         ax.plot(x, y, z, style, color=color, label=label, alpha=alpha)
+        if is_ref:
+            ax.plot(x_0, y_0, z_0, color='black', marker='o')
+            ax.text(x_0+0.5, y_0+0.5, z_0+0, "start", color='black')
     else:
         ax.plot(x, y, style, color=color, label=label, alpha=alpha)
     if SETTINGS.plot_xyz_realistic:
         set_aspect_equal(ax)
     if label and SETTINGS.plot_show_legend:
-        ax.legend(frameon=True)
+        ax.legend(frameon=True, prop={'size': 10}, loc=1, bbox_to_anchor=(0.6,0.9))
+
+    ax.xaxis.set_pane_color((1.0, 1.0, 1.0, 0.0))
+    ax.yaxis.set_pane_color((1.0, 1.0, 1.0, 0.0))
+    ax.zaxis.set_pane_color((1.0, 1.0, 1.0, 0.0))
 
 
 def colored_line_collection(

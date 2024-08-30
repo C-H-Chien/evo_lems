@@ -81,7 +81,7 @@ class Unit(Enum):
 
 
 class VelUnit(Enum):
-    meters_per_sec = "mm/s"
+    meters_per_sec = "m/s"
     rad_per_sec = "rad/s"
     degrees_per_sec = "deg/s"
 
