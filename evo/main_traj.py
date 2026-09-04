@@ -23,10 +23,12 @@ along with evo.  If not, see <http://www.gnu.org/licenses/>.
 
 import argparse
 import datetime
+import itertools
 import logging
 import os
 
 from natsort import natsorted
+import matplotlib.colors as mcolors
 
 from evo.tools.settings import SETTINGS
 
@@ -447,6 +449,7 @@ def run(args):
                       label=short_traj_name,
                       alpha=SETTINGS.plot_reference_alpha,
                       is_ref=True)
+            plot.draw_start_marker(ax_traj, ref_traj, plot_mode, label="start")
             plot.draw_coordinate_axes(ax_traj, ref_traj, plot_mode,
                                       SETTINGS.plot_reference_axis_marker_scale)
             plot.traj_xyz(
@@ -473,9 +476,19 @@ def run(args):
             cmap = getattr(cm, SETTINGS.plot_multi_cmap)
             cmap_colors = iter(cmap(np.linspace(0, 1, len(trajectories))))
 
-        for name, traj in trajectories.items():
+        all_colors_for_traj = [
+            mcolors.CSS4_COLORS['blue'],
+            mcolors.CSS4_COLORS['red'],
+            mcolors.CSS4_COLORS['cyan'],
+            mcolors.CSS4_COLORS['green'],
+            mcolors.CSS4_COLORS['orange'],
+            mcolors.CSS4_COLORS['purple']
+        ]
+        iter_traj_colors = itertools.cycle(all_colors_for_traj)
+        for idx, (name, traj) in enumerate(trajectories.items()):
             if cmap_colors is None:
-                color = next(ax_traj._get_lines.prop_cycler)['color']
+                # color = next(ax_traj._get_lines.prop_cycler)['color']
+                color = next(iter_traj_colors)
             else:
                 color = next(cmap_colors)
 
@@ -483,6 +496,9 @@ def run(args):
             plot.traj(ax_traj, plot_mode, traj,
                       SETTINGS.plot_trajectory_linestyle, color,
                       short_traj_name, alpha=SETTINGS.plot_trajectory_alpha)
+            # Draw "start" only once: for ref (above) when present, else for first trajectory
+            if not args.ref and idx == 0:
+                plot.draw_start_marker(ax_traj, traj, plot_mode, label="start")
             plot.draw_coordinate_axes(ax_traj, traj, plot_mode,
                                       SETTINGS.plot_axis_marker_scale)
             if ref_traj and synced and SETTINGS.plot_pose_correspondences:
